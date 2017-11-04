@@ -1,5 +1,8 @@
-classdef BagFlowEnginePlant < DrakeSystem
+classdef AirSpringPlant1d < DrakeSystem
 
+%bag is in full contact with the ground
+%purely heave motion, no horizontal travel
+    
   % state (world coordinates):  
   %  x(1) - z position [cm]
   %  x(2) - z speed    [cm/s]
@@ -8,23 +11,10 @@ classdef BagFlowEnginePlant < DrakeSystem
   % input:
   %  u(1) - mass flow into bag
 
-  properties  %  based on (Bouadi, Bouchoucha, Tadjine 2007)
-    
-    %bar rocket properties
-    %M = 9;      % mass of air skate [kg] 
-    %M = 250;      % mass of air skate [kg] 
-    
-%     %Pod 2
-%     M = 909/4;
-%         
-%     %length/width/area
-%     L = 0.9144; % length of skate [m]
-%     W = 0.3048; % width  of skate [m]
-    
+  properties  
     %Pod 3
     N = 4;
-    %M_total = 1000;
-    %M_total = 324.319;
+
     M_total = 909;
     M;
         
@@ -41,32 +31,19 @@ classdef BagFlowEnginePlant < DrakeSystem
     V;          % skate volume [m^3]
     
     %bag property
-    %permeability = 0.01; %How porous the bag is
-    permeability = 1e-5; %How porous the bag is
-    
-    %permeability = 1; %How porous the bag is
-    
+    permeability = 1e-8; %How porous the bag is
     
     %z coordinate stuff
     h_skate = 0.0445; %height of hdpe bezel [m]
-    %h_bag   =  0.0015;  %bag thickness when fully inflated [m]
-    %h_bag = 1e-5;
     %h_bag = 2e-4;
     h_bag = 0.020066;
     h;
     
-    %ride_height = 0.000635; %steady state ride height [m] (0.25")
-    %ride_height = 0.001;
-    %ride_height = 1.2e-4;
-    %ride_height = 1.52e-4; %small width
-    %ride_height  = 2.01e-4; %large width 
     ride_height = 6.38e-4;
-    %ride_height = 5e-3;
     
     %mass flow in if desired
     input_flow = 0.1600;
-    %input_flow = 10;
-    
+    %input_flow = 1;
     
     select_ride_height = 0;
     
@@ -100,17 +77,17 @@ classdef BagFlowEnginePlant < DrakeSystem
   end
   
   methods
-    function obj = BagFlowEnginePlant()
-      obj = obj@DrakeSystem(4, ... %number of continuous states
+    function obj = AirSpringPlant1d()
+      obj = obj@DrakeSystem(3, ... %number of continuous states
                                   0, ... %number of discrete states
                                   1, ... %number of inputs
-                                  4, ... %number of output
+                                  3, ... %number of output
                                   false, ... %because the output does not depend on u
                                   true); %because the dynamics and output do not depend on t      
       obj = obj.setOutputFrame(obj.getStateFrame);  % allow full-state feedback
     
       %deal with input limits
-      obj = obj.setInputLimits(0, Inf);
+      %obj = obj.setInputLimits(0, Inf);
       
       
       
@@ -130,7 +107,9 @@ classdef BagFlowEnginePlant < DrakeSystem
       
       %now find equilibrium point
       [obj.x0, obj.u0] = obj.find_equilibrium_point();
-     
+      obj.ride_height = obj.x0(1);
+      obj.input_flow = obj.u0;
+      
       obj.u0_scfm = obj.u0 * 1800.24;
       
 
@@ -140,32 +119,32 @@ classdef BagFlowEnginePlant < DrakeSystem
         %state equilibrium
         
         %find pressure
-        p0 = obj.pa + obj.M*obj.g/obj.A;
+        p0 = obj.pa + obj.M*obj.g/obj.A;        
+        
+        %ride height from darcy flow
         
         %find ride height and mass flow in
         if obj.select_ride_height
             %find flow from ride height
             z0 = obj.ride_height;
-            min0 = mass_flow_out( p0, obj.pa, z0,  obj.gamma, obj.Per, obj.R, obj.T );
+            min0 = obj.permeability*obj.Per * z0/(obj.mu * obj.h_skate) * (p0 - obj.pa);      
             obj.input_flow = min0;
         else
             %find ride height from flow
             min0 = obj.input_flow;
-            z_balance = @(z) mass_flow_out(p0, obj.pa, z,  obj.gamma, obj.Per, obj.R, obj.T ) - min0;
-            z0 = fzero(z_balance, obj.ride_height);
+            z0 = min0 * obj.mu * obj.h_skate/(obj.rhoa * obj.permeability * obj.Per * (p0 - obj.pa));             obj.ride_height = z0;
             obj.ride_height = z0;
         end
-        
-        %pb0 = p0 + min0 * obj.mu * obj.h_bag/(obj.permeability * obj.A^2 * obj.rhoa);
-        pb0 = p0 + min0/obj.darcy_factor;
-        
+%         
+%         %pb0 = p0 + min0 * obj.mu * obj.h_bag/(obj.permeability * obj.A^2 * obj.rhoa);
+       
         
         %export equilibrium point
-        x0 = [z0; 0; pb0; p0];        
+        x0 = [z0; 0; p0];        
         u0 = min0;
     end
     
-    function xdot = dynamics(obj,~,x,u)
+    function xdot = dynamics(obj,t,x,u)
       %dynamics for the air cushion
       %time invariant system
       %horrifically ugly though  
@@ -173,32 +152,28 @@ classdef BagFlowEnginePlant < DrakeSystem
            u_thresh = u;
        else
            u_thresh = 0;
-       end
+       end 
        
-       lift_force = (x(4) - obj.pa) * obj.A; 
-       
-       %source to bag
+       %incoming mass flow rate
        min = u_thresh;
        %min = obj.u0;
        
-       %bag to bottom
-       %darcy flow
-       %mescape = obj.rhoa * obj.permeability*obj.A^2 * (x(3) - x(4))/(obj.mu * obj.h_bag);
-       mescape = obj.darcy_factor * (x(3) - x(4));
-       %pb_outside = (obj.gamma*obj.R*obj.T)/(obj.A*obj.h);
-       pb_outside = (obj.gamma*obj.R*obj.T)/(obj.A*obj.h_skate);       
-       pb_inside = min - mescape;
        
+       %darcy flow (from bag to outside
+       Ae = obj.Per * x(1); %exit area of bag, since the bag does not let out air on bottom
+       mescape = obj.permeability*Ae/(obj.mu * obj.h_skate) * (x(3) - obj.pa);      
        
-       %bottom to outside        
-       mout = mass_flow_out( x(4), obj.pa, x(1),  obj.gamma, obj.Per, obj.R, obj.T );                            
-       p_outside =  (obj.gamma*obj.R*obj.T)/(obj.A*x(1));       
-       p_inside = mescape - mout - x(4)*obj.A*x(2)/(obj.R*obj.T);
+       %pressure in the bag
+       p_outside = (obj.gamma*obj.R*obj.T)/(obj.A*x(1));
+       p_inside  = min - mescape - x(3)*obj.A*x(2)/(obj.R*obj.T);
+       
+       %pressure gradient force
+       %pb-pa * area
+       lift_force = (x(3) - obj.pa) * obj.A;
        
        %dynamical evolution of system
        xdot = [x(2);
                lift_force/obj.M - obj.g;
-               pb_outside*pb_inside;
                p_outside * p_inside];
            
     end
@@ -210,13 +185,11 @@ classdef BagFlowEnginePlant < DrakeSystem
 
     
     function x_init = getInitialState(obj)
-      z_init = obj.ride_height;  
-      pb_init = obj.x0(3);
-      p_init = obj.x0(4) + 1000;
+      z_init = obj.ride_height + 1e-7;  
+      p_init = obj.x0(3);
       x_init = [z_init;
-           0;       %initial z speed
-           pb_init; %initial bag pressure
-           p_init]; %initial bottom pressure
+                0;       %initial z speed
+                p_init]; %initial bottom pressure
     end
     
     function [c,V] = hoverLQR(obj, ROA)      

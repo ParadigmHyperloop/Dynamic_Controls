@@ -1,6 +1,8 @@
-use_bag = 0;
+use_bag = 1;
 
-if use_bag
+if use_bag == 2
+    p = BagSideFlowEnginePlant;
+elseif use_bag == 1
     p = BagFlowEnginePlant;
 else
     p = FlowEnginePlant;
@@ -11,7 +13,11 @@ end
 
 A = full(A);
 B = full(B);
-if use_bag
+if use_bag == 2
+    sys = ss(A, B, C, D, 'StateName', {'Height', 'Velocity', 'Bag Pressure', 'Bottom Pressure', 'Side Pressure'},...
+                         'OutputName',{'Height', 'Velocity', 'Bag Pressure', 'Bottom Pressure', 'Side Pressure'},...
+                         'InputName', 'MassFlowIn');
+elseif use_bag == 1
     sys = ss(A, B, C, D, 'StateName', {'Height', 'Velocity', 'Bag Pressure', 'Bottom Pressure'},...
                          'OutputName',{'Height', 'Velocity', 'Bag Pressure', 'Bottom Pressure'},...
                          'InputName', 'MassFlowIn');

@@ -24,12 +24,14 @@ classdef FlowEnginePlant < DrakeSystem
     N = 4;
     %M_total = 324.319;
     M_total = 909;
-    %M_total = 4.5;
+    %M_total = 3.023e-6;
     M;
         
     %length/width/area
     L = 0.9144; % length of skate [m]
     W = 0.3048; % width  of skate [m] Pod 2
+    %L = 0.0706;
+    %W = 0.0706;
     %W = 0.127; % width  of skate [m]
     %W = 0.9144;
     
@@ -41,32 +43,33 @@ classdef FlowEnginePlant < DrakeSystem
     Per;        % skate perimeter [m]
     Per_skate;  % per skate perimeter
     V;          % skate volume [m^3]
-    
-    %bag property
-    %porosity = 0.04; %How porous the bag is
-    porosity = 1; %How porous the bag is
-    
+       
     
     %z coordinate stuff
     h_skate = 0.0445; %height of hdpe bezel [m]
     %h_bag   =  0.0015;  %bag thickness when fully inflated [m]
     %h_bag = 1e-5;
+    %h_skate = 0.1;
     %h_bag = 0.2;
     h_bag = 0.020066;
     h;
     %ride_height = 0.000635; %steady state ride height [m] (0.25")
+    %ride_height;
     %ride_height = 0.001;
-    %ride_height = 1.2e-4;
+    %ride_height = 0.072;
+    %%ride_height = 1.2e-4;
     %ride_height = 1.52e-4; %small width
     %ride_height  = 2.01e-4; %large width 
     ride_height = 6.38e-4;
     %ride_height = 5e-3;
     
     %mass flow in if desired
-    input_flow = 0.1600;
-    %input_flow = 0.005;
+    input_flow = 0.5; %[kg/s]
     
-    select_ride_height = 0;
+    %input_flow = 0.16; %[kg/s]
+    %input_flow = 0.08; %[kg/s]
+    
+    select_ride_height = 1;
     
     %dimensionless quantities
     Mbar;
@@ -75,14 +78,14 @@ classdef FlowEnginePlant < DrakeSystem
     u0_scfm;
     
     %environment properties
-    g = 9.81;   % gravity [N]
+    g = 9.81;   % gravity [m/s^2]
     b = 0;      %friction [N/(m/s)]
     pa = 101325.0; % atmospheric pressure [N/m^2=Pa]
     %pa = 5 * 133.322; %tube pressure torr->pascal [N/m^2=Pa]
     rhoa; %atmospheric density [kg/m^3]
     gamma = 1.40;   %specific heat ratio at stp
     
-    T = 300; %300 Kelvin
+    T = 300; %[K]
     R = 287; %Specific gas constant of air, [J/(kg*K)]
     
     %controller balance
@@ -112,14 +115,23 @@ classdef FlowEnginePlant < DrakeSystem
       obj.M = obj.M_total;
       obj.A_skate = obj.L*obj.W; %skate area [m^2]
       obj.Per_skate = 2*(obj.L + obj.W); %skate perimeter [m]
-      obj.A = obj.porosity * obj.A_skate * obj.N;
+      obj.A = obj.A_skate * obj.N;
       obj.Per = obj.Per_skate * obj.N;
-      
+%       if obj.N == 1
+%           obj.Per = obj.Per_skate;
+%       else
+%           obj.Per = obj.Per_skate * obj.N / 2;
+%       end
+%       
       obj.h = obj.h_bag + obj.h_skate;
-      %obj.h = obj.h_bag;
-      obj.V = obj.A*obj.h;
       
+      %equilibrium point
       [obj.x0, obj.u0] = obj.find_equilibrium_point();
+      
+      %hacky solution
+      obj.input_flow = obj.u0;
+      obj.ride_height = obj.x0(1);
+      
       
       %dimensionless characterization
       obj.Perbar = obj.Per/obj.h;
@@ -145,13 +157,15 @@ classdef FlowEnginePlant < DrakeSystem
             %find flow from ride height
             z0 = obj.ride_height;
             min0 = mass_flow_out( p0, obj.pa, z0,  obj.gamma, obj.Per, obj.R, obj.T );
-            obj.input_flow = min0;
+            %obj.input_flow = min0;
+            %set(obj, 'input_flow', min0);
         else
             %find ride height from flow
             min0 = obj.input_flow;
             z_balance = @(z) mass_flow_out(p0, obj.pa, z,  obj.gamma, obj.Per, obj.R, obj.T ) - min0;
             z0 = fzero(z_balance, obj.ride_height);
-            obj.ride_height = z0;
+            %obj.ride_height = z0;
+            %set(obj, 'ride_height', z0);
         end
         
         x0 = [z0; 0; p0];        
@@ -162,13 +176,15 @@ classdef FlowEnginePlant < DrakeSystem
       %dynamics for the air cushion
       %time invariant system
       %horrifically ugly though  
-        if u >= 0
-            u_thresh = u;
-        else
-            u_thresh = 0;
-        end
+%         if u >= 0
+%             u_thresh = u;
+%         else
+%             u_thresh = 0;
+%         end
+
         
-       % u_thresh = u;
+       u_thresh = u;
+       %u_thresh = obj.u0;
 %       
 %         rho = obj.rhoa*power(x(3)/obj.pa,(1/obj.gamma));
 %         vout = sqrt((2*obj.gamma)/(obj.gamma-1) * (x(3)/rho - obj.pa/obj.rhoa));
@@ -176,11 +192,11 @@ classdef FlowEnginePlant < DrakeSystem
 %         Ae = 2*(obj.W + obj.L) * x(1);
 %         mout = obj.rhoa * Ae * vout;
 %         
-        mout = obj.porosity * mass_flow_out( x(3), obj.pa, x(1),  obj.gamma, obj.Per, obj.R, obj.T );
+        mout = mass_flow_out( x(3), obj.pa, x(1),  obj.gamma, obj.Per, obj.R, obj.T );
         
         %V = obj.A * x(1);
         outside =  (obj.gamma*obj.R*obj.T)/(obj.A*(x(1) + obj.h));
-        net_mass_flow = u(1) - mout;
+        net_mass_flow = u_thresh - mout;
         inside = net_mass_flow - x(3)*obj.A*x(2)/(obj.R*obj.T);
         
         xdot = [x(2);
@@ -201,7 +217,8 @@ classdef FlowEnginePlant < DrakeSystem
 
     
     function x_init = getInitialState(obj)
-      z_init = obj.ride_height + 0.0001;  
+      %z_init = obj.ride_height + 0.0001;  
+      z_init = obj.ride_height;
       p_init = obj.x0(3);
       %x = [z_init - obj.ride_height;  %initial z position (ride height)
       x_init = [z_init;

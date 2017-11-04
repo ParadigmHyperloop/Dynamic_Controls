@@ -1,6 +1,12 @@
 function [ mass_out ] = mass_flow_out( pp, pa, zz,  gamma, L, R, T )
-%MASS_FLOW_OUT Summary of this function goes here
-%   Detailed explanation goes here
+%MASS_FLOW_OUT mass flow rate out of region (kg/s)
+%   pp: pressure 
+%   pa: atmospheric pressure
+%   zz: ride height
+%   gamma: specific heat ratio
+%   L:  perimeter
+%   R: molar gas constant
+%   T: Temperature
 
 outside_term = pp.*L.*zz/sqrt(R*T);
 
