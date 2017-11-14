@@ -4,7 +4,7 @@ p = AirSpringPlant1d;
 
 v = FlowEngineVisualizer(p);
 
-time_span = [0, 0.20];
+time_span = [0, 1];
 %time_span = [0, 1.4290667];
 %time_span = [0, 1.78];
 %time_span = [0, 10];
@@ -32,7 +32,7 @@ xtraj_num = xtraj.eval(t);
 
 
 %subplot(5, 1, 1)
-subplot(4, 1, 1)
+subplot(3, 1, 1)
 hold on
 plot(t, 100*xtraj_num(1, :))
 plot(time_span, [0, 0] + p.x0(1)*100, '--k')
@@ -42,7 +42,7 @@ legend('z')
 ylabel('heave (cm)')
 
 %subplot(5, 1, 2)
-subplot(4, 1, 2)
+subplot(3, 1, 2)
 hold on
 plot(t, 100*xtraj_num(2, :))
 plot(time_span, [0, 0], '--k')
@@ -51,13 +51,13 @@ title('$$\dot{z}$$', 'interpreter', 'latex')
 legend('dz')
 ylabel('vertical speed (cm/s)')
 
-subplot(4, 1, 3)
+subplot(3, 1, 3)
 hold on
 plot(t, xtraj_num(3, :)/1000)  
 plot(time_span, [0, 0] + p.x0(3)/1000, '--k')
 hold off
 title('$$p$$', 'interpreter', 'latex')  
-xlabel('time')
+xlabel('time (s)')
 ylabel('bagpressure (kPa)')
 %ylabel('force (N)')
 legend('p')

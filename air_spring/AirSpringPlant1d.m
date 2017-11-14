@@ -15,12 +15,12 @@ classdef AirSpringPlant1d < DrakeSystem
     %Pod 3
     N = 4;
 
-    M_total = 909;
+    M_total = 909; %kg
     M;
         
     %length/width/area
-    L = 0.9144; % length of skate [m]
-    W = 0.3048; % width  of skate [m] Pod 2
+    L = 0.9144; % length of skate [m] 36"
+    W = 0.3048; % width  of skate [m] 12"
     %W = 0.127; % width  of skate [m]
     %W = 0.9144;
     
@@ -31,13 +31,19 @@ classdef AirSpringPlant1d < DrakeSystem
     V;          % skate volume [m^3]
     
     %bag property
-    permeability = 1e-8; %How porous the bag is
+    darcy_flow= 0;
+    permeability = 1e-5; %How porous the bag is
+    %forchheimer_beta = 1e8; % forchheimer coefficient[1/m]
+    forchheimer_beta = 1.2e6; % forchheimer coefficient[1/m]
     
     %z coordinate stuff
     h_skate = 0.0445; %height of hdpe bezel [m]
     %h_bag = 2e-4;
     h_bag = 0.020066;
     h;
+    
+    bag_thickness = 2e-3; %bag thickness is 0.079"
+    %bag_thickness = 1e-2; %bag thickness is 0.079"
     
     ride_height = 6.38e-4;
     
@@ -66,7 +72,6 @@ classdef AirSpringPlant1d < DrakeSystem
     T = 300; %300 Kelvin
     R = 287; %Specific gas constant of air, [J/(kg*K)]
     mu = 1.85e-5; %Dynamic Viscosity of Air at 300K [Pa*s]
-    darcy_factor; %mass flow = darcy_factor * pressure difference
     
     
     %controller balance
@@ -102,9 +107,7 @@ classdef AirSpringPlant1d < DrakeSystem
       obj.Per = obj.Per_skate * obj.N;
       
       obj.h = obj.h_bag + obj.h_skate;
-      
-      obj.darcy_factor = obj.rhoa * obj.permeability*obj.A /(obj.mu * obj.h_bag);
-      
+           
       %now find equilibrium point
       [obj.x0, obj.u0] = obj.find_equilibrium_point();
       obj.ride_height = obj.x0(1);
@@ -127,12 +130,27 @@ classdef AirSpringPlant1d < DrakeSystem
         if obj.select_ride_height
             %find flow from ride height
             z0 = obj.ride_height;
-            min0 = obj.permeability*obj.Per * z0/(obj.mu * obj.h_skate) * (p0 - obj.pa);      
+            min0 = obj.permeability*obj.Per * z0/(obj.mu * obj.bag_thickness) * (p0 - obj.pa);      
             obj.input_flow = min0;
         else
             %find ride height from flow
             min0 = obj.input_flow;
-            z0 = min0 * obj.mu * obj.h_skate/(obj.rhoa * obj.permeability * obj.Per * (p0 - obj.pa));             obj.ride_height = z0;
+            %z0 = min0*obj.mu*obj.bag_thickness/(obj.permeability * obj.Per * (p0-obj.pa));
+            
+            %quadratic form of forchheimer equation
+            a = obj.forchheimer_beta/obj.Per^2;
+            b = obj.mu/(obj.permeability * obj.Per);            
+            c = -(p0-obj.pa)/obj.bag_thickness * obj.rhoa;
+            
+            if obj.darcy_flow
+                min_over_z = -c/b;
+            else
+                min_over_z = (-b + sqrt(b^2 - 4*a*c))/(2*a);
+            end
+            
+            z0 = min0 / min_over_z;
+            
+            
             obj.ride_height = z0;
         end
 %         
@@ -160,10 +178,24 @@ classdef AirSpringPlant1d < DrakeSystem
        
        
        %darcy flow (from bag to outside
-       Ae = obj.Per * x(1); %exit area of bag, since the bag does not let out air on bottom
-       mescape = obj.permeability*Ae/(obj.mu * obj.h_skate) * (x(3) - obj.pa);      
+       %Ae = obj.Per * x(1); %exit area of bag, since the bag does not let out air on bottom
+       
+       a = obj.forchheimer_beta/obj.Per^2;
+       b = obj.mu/(obj.permeability * obj.Per);            
+       c = -(x(3)-obj.pa)/obj.bag_thickness * obj.rhoa;
+
+       if obj.darcy_flow
+           min_over_z = -c/b;
+       else
+           min_over_z = (-b + sqrt(b^2 - 4*a*c))/(2*a);
+       end
+       
+       mescape = x(1) * min_over_z;
+       
+       %mescape = obj.permeability*obj.Per/(obj.mu*obj.bag_thickness) *x(1)*(x(3) - obj.pa);      
        
        %pressure in the bag
+       %p_outside = (obj.gamma*obj.R*obj.T)/(obj.A*(x(1) + obj.h_skate));
        p_outside = (obj.gamma*obj.R*obj.T)/(obj.A*x(1));
        p_inside  = min - mescape - x(3)*obj.A*x(2)/(obj.R*obj.T);
        
@@ -185,8 +217,14 @@ classdef AirSpringPlant1d < DrakeSystem
 
     
     function x_init = getInitialState(obj)
-      z_init = obj.ride_height + 1e-7;  
-      p_init = obj.x0(3);
+      %z_init = obj.ride_height + 1e-3;       
+      %z_init = obj.ride_height;
+      z_init = 1e-10;
+      %p_init = obj.x0(3);
+      
+      %z_init = obj.ride_height;       
+      p_init = obj.pa;
+      
       x_init = [z_init;
                 0;       %initial z speed
                 p_init]; %initial bottom pressure
