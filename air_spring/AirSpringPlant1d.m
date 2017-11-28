@@ -173,8 +173,8 @@ classdef AirSpringPlant1d < DrakeSystem
        end 
        
        %incoming mass flow rate
-       min = u_thresh;
-       %min = obj.u0;
+       %min = u_thresh;
+       min = obj.u0;
        
        
        %darcy flow (from bag to outside
@@ -192,9 +192,7 @@ classdef AirSpringPlant1d < DrakeSystem
        
        mescape = x(1) * min_over_z;
        
-       %mescape = obj.permeability*obj.Per/(obj.mu*obj.bag_thickness) *x(1)*(x(3) - obj.pa);      
-       
-       %pressure in the bag
+       %pressure change in the bag
        %p_outside = (obj.gamma*obj.R*obj.T)/(obj.A*(x(1) + obj.h_skate));
        p_outside = (obj.gamma*obj.R*obj.T)/(obj.A*x(1));
        p_inside  = min - mescape - x(3)*obj.A*x(2)/(obj.R*obj.T);
@@ -217,12 +215,11 @@ classdef AirSpringPlant1d < DrakeSystem
 
     
     function x_init = getInitialState(obj)
-      %z_init = obj.ride_height + 1e-3;       
-      %z_init = obj.ride_height;
-      z_init = 1e-10;
+      %z_init = obj.ride_height + 1e-2;       
+      z_init = obj.ride_height;
+      %z_init = 1e-10;
       %p_init = obj.x0(3);
       
-      %z_init = obj.ride_height;       
       p_init = obj.pa;
       
       x_init = [z_init;

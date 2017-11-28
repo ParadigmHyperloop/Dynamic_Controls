@@ -62,4 +62,4 @@ ylabel('bagpressure (kPa)')
 %ylabel('force (N)')
 legend('p')
 
-% v.playback(xtraj);
+ v.playback(xtraj);
