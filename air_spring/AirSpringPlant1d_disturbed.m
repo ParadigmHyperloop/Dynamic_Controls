@@ -175,16 +175,21 @@ classdef AirSpringPlant1d_disturbed < DrakeSystem
            u_thresh = 0;
        end 
        
+       
+       
        %incoming mass flow rate
        
        %active control
        %response from solenoid
-       eff_height = x(1) - u(2);
-      
-       %open loop control
-       %min = obj.u0(1);
-       %eff_height = x(1);
+       w_disturbance = u(2);
        
+       
+       %open loop control
+       %u_thresh = obj.u0(1);
+       %w_disturbance = 0;
+       %w_disturbance = -5e-3;
+       
+       eff_height = x(1) - w_disturbance;       
        min = x(4);
        
        %darcy flow (from bag to outside
@@ -233,9 +238,14 @@ classdef AirSpringPlant1d_disturbed < DrakeSystem
       
       p_init = obj.pa;
       
+      %min_init = obj.x0(4);
+      min_init = 0;
+      
+      
       x_init = [z_init;
-                0;       %initial z speed
-                p_init]; %initial bottom pressure
+                0;        %initial z speed
+                p_init    %initial bottom pressure
+                min_init];%nominal mass flow 
     end
     
     function [c,V] = hoverLQR(obj, ROA)      

@@ -1,5 +1,5 @@
-p = AirSpringPlant1d;
-%p = AirSpringPlant1d_disturbed;
+%p = AirSpringPlant1d;
+p = AirSpringPlant1d_disturbed;
 x0 = Point(p.getStateFrame, p.x0);
 u0 = Point(p.getInputFrame, p.u0);
 pp = p.taylorApprox(0,x0,u0,3);  % make polynomial approximation
@@ -8,7 +8,7 @@ options = struct;
 %options.method = {'levelset', 'bilinear'};
 options.method = 'levelset';
 %options.method = {'levelset', 'bilinear', 'sampling'}
-options.degV = 2;
+options.degV = 4;
 options.degL1 = 6;
 options.degL2 = 6;
 V = regionOfAttraction(pp, x0, options);

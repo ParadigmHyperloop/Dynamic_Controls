@@ -7,7 +7,6 @@ classdef AirSpringPlant1d < DrakeSystem
   %  x(1) - z position [cm]
   %  x(2) - z speed    [cm/s]
   %  x(3) - bag pressure   [N/m^2 = Pa]
-  %  x(4) - underneath skate pressure [Pa]
   % input:
   %  u(1) - mass flow into bag
 
@@ -173,8 +172,8 @@ classdef AirSpringPlant1d < DrakeSystem
        end 
        
        %incoming mass flow rate
-       %min = u_thresh;
-       min = obj.u0;
+       min = u_thresh;
+       %min = obj.u0;
        
        
        %darcy flow (from bag to outside
@@ -230,7 +229,7 @@ classdef AirSpringPlant1d < DrakeSystem
     function [c,V] = hoverLQR(obj, ROA)      
       x0 = Point(obj.getStateFrame, obj.x0);
       u0 = Point(obj.getInputFrame, obj.u0);
-      Q = diag([1 1 1e-2 1e-2]);
+      Q = diag([10 1 1e-2]);
       R = diag(1)*obj.delta;
 
       if ROA
