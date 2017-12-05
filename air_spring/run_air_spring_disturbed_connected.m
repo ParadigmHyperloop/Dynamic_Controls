@@ -1,7 +1,15 @@
 mass_flow = 1;
 
-p = AirSpringPlant1d_disturbed;
-c = disturbance_input(p);
+%p = AirSpringPlant1d_disturbed;
+%c = disturbance_input(p);
+
+%v = 26.8224; %60 mph
+v = 26.8;
+%v = 80;
+
+p = AirSpringPlant1d_disturbed_2;
+c = disturbance_input_2(p, v);
+
 
 c = c.setOutputFrame(p.getInputFrame);
 p = p.setOutputFrame(c.getInputFrame);
@@ -9,7 +17,7 @@ p = p.setOutputFrame(c.getInputFrame);
 
 v = FlowEngineVisualizer(p);
 
-time_span = [0, 1];
+time_span = [0, 2];
 
 n = 1;
 

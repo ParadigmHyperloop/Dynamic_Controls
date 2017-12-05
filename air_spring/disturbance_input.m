@@ -32,7 +32,12 @@ classdef disturbance_input < DrakeSystem
     function y = output(obj,t,x,u)
       % full state feedback is allowed here
       u_base = obj.u0(1);
-      w_base = -5e-3;
+      if (t < 0.5) || (t > 0.51)
+          w_base = 0;
+      else
+          %w_base = -5e-3;
+          w_base = -0.0127;
+      end
       y = [u_base; w_base];
       %y = obj.u0;
     end  

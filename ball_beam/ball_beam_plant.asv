@@ -1,0 +1,107 @@
+classdef ball_beam_plant < DrakeSystem
+
+  % state (world coordinates):  
+  %  q(1) - position of ball along beam [m]
+  %  q(2) - angle of beam [rad]
+  % input:
+  %  u(1) - motor torque
+
+  properties  %  based on (Bouadi, Bouchoucha, Tadjine 2007)
+    %beam properties
+    L = 0.2;        % length of beam [m]
+    m_beam = 0.5;   % mass of beam [kg]
+    J_beam;         % beam inertia [kg m^2]
+    
+    %ball properties
+    r_ball = 0.02;  % radius of ball [m]
+    m_ball = 0.01;  % mass of ball [kg]
+    J_ball;         % ball inertia [kg m^2]
+    
+    %environment properties
+    g = 9.81;       % gravity  
+    
+    %controls
+    x0;             %equilibrium point (setpoint)
+    u0;             %equilibrium control input (torque)
+    
+  end
+  
+  methods
+    function obj = ball_beam_plant()
+      %obj = obj@SecondOrderSystem(2,1,true);
+      obj = obj@DrakeSystem(0, ... %number of continuous states
+                            0, ... %number of discrete states
+                            4, ... %number of inputs
+                            3, ... %number of output
+                          true, ... %because the output does not depend on u
+                          false); %because the dynamics and output do not depend on t      
+
+      obj = obj.setOutputFrame(obj.getStateFrame);  % allow full-state feedback
+      
+      %moments of inertia
+      obj.J_beam = obj.m_beam*obj.L^2/12;
+      obj.J_ball = 2*obj.m_ball*obj.r_ball^2 / 3; %hollow sphere
+      
+      %IMPORTANT!
+      %ball_setpoint = -0.1; %r0;
+      ball_setpoint = 0.0; %r0;
+      
+      
+      %equilibrium point
+      obj.x0 = [ball_setpoint; 0; 0; 0];
+      obj.u0 = obj.m_ball*obj.g*ball_setpoint; 
+      
+    end
+    
+    function xdot = dynamics(obj,t,x,u)
+      %Implement the second-order dynamics for the ball_beam system
+      
+      %q(1) position of ball along beam, qd(1) velocity (r)
+      %q(2) angle of beam, qd(2) angular velocity       (th)
+      %u motor torque required
+      
+      %open loop control
+      %torque = 0;
+      
+      %closed loop
+      torque = u;
+      
+      %mass/inertia matrix
+      M = [obj.J_ball/obj.L^2 + obj.m_ball; obj.m_ball*q(1)^2 + obj.J_beam];
+      
+      rdd  = obj.m_ball*(q(1)*qd(2)^2 - obj.g*sin(q(2)));
+      thdd = -2*obj.m_ball*q(1)*qd(1)*qd(2) - obj.m_ball*obj.g*q(1)*cos(q(2)) + torque; 
+      
+      qdd = [rdd; thdd]./M;
+    
+    end
+    
+    function x = getInitialState(obj)
+      x = [0.05; 0; 0; 0];
+    
+    end
+    
+    function [c,V] = balanceLQR(obj)
+      
+      x0 = Point(obj.getStateFrame, obj.x0);
+      u0 = Point(obj.getInputFrame, obj.u0);
+      
+      Q = diag([5; 1; 1; (obj.L/2/pi)]);
+      R = 1;
+      
+      if (nargout>1)
+        [c,V0] = tilqr(obj,x0,u0,Q,R);
+        sys = feedback(obj,c);
+
+        pp = sys.taylorApprox(0,x0,[],3);  % make polynomial approximation
+        options=struct();
+        options.degL1=2;
+        V=regionOfAttraction(pp,V0,options);
+      else
+        c = tilqr(obj,x0,u0,Q,R);
+      end
+    end
+    
+  end
+  
+end
