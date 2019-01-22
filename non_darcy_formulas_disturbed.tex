@@ -1,0 +1,15 @@
+\documentclass[11pt,a4paper]{scrartcl}\usepackage{amssymb,bm}\usepackage{amsmath}
+%\usepackage{color}
+\usepackage{xcolor}
+\begin{document}
+%\begin{equation}\pi(1)=\frac{length}{height }\end{equation}
+\begin{align}
+%\pi(1) &= \frac{length}{height }
+M \ddot{z} &= (P_{bag} - P_{atmo})A - Mg \\
+\dot{P}_{bag} &= \frac{\gamma R T}{A (z+\textcolor{purple}{w_{height}})} (\dot{m}_{in} - \dot{m}_{escape} - \frac{P_{bag} A \dot{z}}{R T})\\[20pt]
+\rho_{atmo} \frac{\partial P}{\partial x} &= \beta(\frac{\dot{m}_{escape}}{A_e})^2 + \mu(\frac{\dot{m}_{escape}}{A_e}) \\
+A_{e} &= Per * (z+\textcolor{purple}{w_{height}}) + W*\textcolor{blue}{w_{gap}} \\
+\frac{\partial P}{\partial x} &= \frac{P_{bag} - P_{atmo}}{\ell}
+\end{align}
+
+\end{document}

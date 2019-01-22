@@ -1,5 +1,6 @@
-%p = AirSpringPlant1d;
-p = AirSpringPlant1d_disturbed;
+p = AirSpringPlant1d;
+%p = AirSpringPlant1d_slow;
+%p = AirSpringPlant1d_disturbed;
 x0 = Point(p.getStateFrame, p.x0);
 u0 = Point(p.getInputFrame, p.u0);
 pp = p.taylorApprox(0,x0,u0,3);  % make polynomial approximation
@@ -8,7 +9,7 @@ options = struct;
 %options.method = {'levelset', 'bilinear'};
 options.method = 'levelset';
 %options.method = {'levelset', 'bilinear', 'sampling'}
-options.degV = 4;
+options.degV = 2;
 options.degL1 = 6;
 options.degL2 = 6;
 V = regionOfAttraction(pp, x0, options);
@@ -17,20 +18,23 @@ pref_inclusion = 'slice';
 %pref_inclusion = 'projection';
 
 figure(20);
-subplot(1, 3, 1)
+subplot(3, 1, 1)
 plotFunnel(V, struct('plotdims', [1 2], 'inclusion', pref_inclusion ))
-xlabel('$$z \quad(m)$$', 'interpreter', 'latex')
-ylabel('$$\dot{z} \quad(\frac{m}{s})$$', 'interpreter', 'latex')
+xlabel('$$\Delta z \quad(m)$$', 'interpreter', 'latex')
+ylabel('$$\Delta \dot{z} \quad(\frac{m}{s})$$', 'interpreter', 'latex')
+axis square
 
-subplot(1, 3, 2)
+subplot(3, 1, 2)
 plotFunnel(V, struct('plotdims', [1 3], 'inclusion', pref_inclusion ))
-xlabel('$$z \quad(m)$$', 'interpreter', 'latex')
+xlabel('$$\Delta z \quad(m)$$', 'interpreter', 'latex')
 ylabel('$$\Delta P \quad(Pa)$$', 'interpreter', 'latex')
+axis square
 
-subplot(1, 3, 3)
+subplot(3, 1, 3)
 plotFunnel(V, struct('plotdims', [2 3], 'inclusion', pref_inclusion ))
-xlabel('$$\dot{z} \quad(\frac{m}{s})$$', 'interpreter', 'latex')
+xlabel('$$\Delta \dot{z} \quad(\frac{m}{s})$$', 'interpreter', 'latex')
 ylabel('$$\Delta P \quad(Pa)$$', 'interpreter', 'latex')
+axis square
 
 %V0 = QuadraticLyapunovFunction(pp.getStateFrame, eye(3));
 %

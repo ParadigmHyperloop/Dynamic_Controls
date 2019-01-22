@@ -1,29 +1,56 @@
-xs = [-0.1; -0.05; 0; 0];
-setpoint = 0.05; %desired position on bar
+xs = [0.15; 0.0; 0.0; 0.0];
+setpoint = -0.1; %desired position on bar
 
-p = ball_beam_plant(setpoint);
-c = p.balanceLQR();
+%observer control
+use_observer = 1;
+num_output = 2; %1: r, 2: r, th
+save_output = 0;
+
+if use_observer
+    %observer stuff
+    p = ball_beam_plant_observer(setpoint, num_output);
+    [A, B, C, D] = p.linearize(0, p.x0, p.u0);
+    A = full(A);
+    B = full(B);
+    
+    c = p.balanceLQR();
+    F = c.D;
+    
+    L = place(A', C', 10*eig(A+B*F));    
+    
+    observer = LuenbergerObserver(p, L', []);
+    %observer = LuenbergerObserver(p, L, []);
+    observer.forward_model = LinearSystem(A, B, [], [], C, []); %need to figure out how this works for hinf stuff    
+    
+    sys = mimoFeedback(mimoCascade(p, observer), c);
+
+else
+    p = ball_beam_plant(setpoint);
+    [A, B, C, D] = p.linearize(0, p.x0, p.u0);
+    
+    c = p.balanceLQR();
+    sys = feedback(p, c);
+end
+
 
 v = ball_beam_visualizer(p);
-%[A, B, C, D, xdot0] = p.linearize(0, p.x0, p.u0);
-
-sys = feedback(p, c);
 
 time_span = [0, 3];
-
+dt = 0.025;
 
 
 tic;
-xtraj = simulate(sys, time_span, xs);
-%xtraj = simulate(p, time_span);
+ytraj = simulate(sys, time_span);
+%ytraj = simulate(sys, time_span, xs);
+%ytraj = simulate(p, time_span);
 toc;
 
 %output plots
 
 Nt = 201;
 
-t = linspace(time_span(1), time_span(2), Nt);  
-xtraj_num = xtraj.eval(t);
+%t = linspace(time_span(1), time_span(2), Nt);  
+%xtraj_num = ytraj.eval(t);
 
 % figure(50)
 % subplot(5, 1, 1)
@@ -78,5 +105,24 @@ xtraj_num = xtraj.eval(t);
 % ylabel('torque (N m)')
 % legend('u')
 
+%v_options = struct();
+%v_options.slider = true;
+%v_options.display_dt = 0.1;
+v.playback(ytraj);
+%v.playbackMovie(ytraj, 'ball_beam_movie.swf')
 
-v.playback(xtraj);
+%real inefficient solution
+if save_output
+    for t = time_span(1):dt:time_span(2)
+        x = ytraj.eval(t);
+        v.drawWrapper(t, x);
+        if t == 0
+            t_name = '0.000';
+        else
+            t_name = num2str(t, '%03f');
+        end
+        print(['bar_rocket_drake/ball_beam/img/ball_beam_t_', t_name, '.png'], '-dpng')
+    end
+end
+
+%export to sequence of images

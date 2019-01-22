@@ -25,7 +25,7 @@ classdef ball_beam_plant < DrakeSystem
     %controls
     x0;             %equilibrium point (setpoint)
     u0;             %equilibrium control input (torque)
-    
+    uses_observer = 0;
   end
   
   methods
@@ -37,7 +37,13 @@ classdef ball_beam_plant < DrakeSystem
                             4, ... %number of output
                             false, ... %because the output does not depend on u
                             true); %because the dynamics and output do not depend on t      
-
+      
+      %coordinate frames     
+      %obj = setInputFrame(obj,CoordinateFrame('TWIPInput',1,'u',{'tau'}));
+      
+      obj = setInputFrame(obj, CoordinateFrame('BallBeamInput', 1, 'u', {'tau'}));
+      obj = setStateFrame(obj, CoordinateFrame('BallBeamState', 4, 'x', {'r', 'rdot', 'th', 'thdot'}));
+      
       obj = obj.setOutputFrame(obj.getStateFrame);  % allow full-state feedback
       
       %moments of inertia
@@ -48,14 +54,14 @@ classdef ball_beam_plant < DrakeSystem
       if nargin > 0
           ball_setpoint = setpoint;
       else
-        ball_setpoint = 0.0; %r0;
+          ball_setpoint = 0.0; %r0;
       end
       %ball_setpoint = 0.0; %r0;
       
       
       %equilibrium point
       obj.x0 = [ball_setpoint; 0; 0; 0];
-      obj.u0 = obj.m_ball*obj.g*ball_setpoint; 
+      obj.u0 = obj.m_ball*obj.g*ball_setpoint;       
       
     end
     
@@ -102,7 +108,7 @@ classdef ball_beam_plant < DrakeSystem
       Q = blkdiag(Qr, Qth);
       %Q = diag([10; 10; 1; (obj.L/2/pi)]);
       %Q = eye(4);
-      R = 10;
+      R = 30;
       
       if (nargout>1)
         [c,V0] = tilqr(obj,x0,u0,Q,R);

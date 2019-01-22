@@ -6,11 +6,11 @@ v = BarRocketVisualizer(p);
 
 time_span = [0, 4];
 
-n=3;
+n=1;
 
 %if checkDependency('sedumi')
-if 1
-%if 0
+%if 1
+if 0
   [c,V] = hoverLQR(p);
   sys = feedback(p,c);
   

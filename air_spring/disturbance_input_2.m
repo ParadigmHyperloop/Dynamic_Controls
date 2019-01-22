@@ -18,9 +18,15 @@ classdef disturbance_input_2 < DrakeSystem
       %slot_length  = 0.1;
       %slot_length  = 0.01;      
       slot_length  = 0.00635; %0.25" [m]
-      %track_length = 3.81;    %12.5' [m]
-      track_length  = 1.8288;  %6'    [m]
+      track_length = 3.81;    %12.5' [m]
+      %track_length  = 1.8288;  %6'    [m]
       %square wave of height
+      
+      %track drift
+      track_drift_max = 0.01016; %0.4" (need to check these numbers)
+      track_drift_incremental = 0.001016; %0.04"
+
+      
       track_period;
       track_duty_cycle;
       
@@ -28,10 +34,11 @@ classdef disturbance_input_2 < DrakeSystem
       
       %time between slab changes
       sample_time;
+      seed;
   end
   
   methods
-    function obj = disturbance_input_2(p, v)
+    function obj = disturbance_input_2(p, v, seed)
       obj = obj@DrakeSystem(0, ... %number of continuous states
                                   0, ... %number of discrete states
                                   4, ... %number of inputs
@@ -44,7 +51,8 @@ classdef disturbance_input_2 < DrakeSystem
       obj.track_period = obj.track_length + obj.slot_length;
       obj.track_duty_cycle = 100*(obj.track_length / obj.track_period);
       
-      obj.sample_time = obj.track_period/v;
+      obj.sample_time = obj.track_period / v;
+      obj.seed = seed;
     end
 %     
 %     function w_init = getInitialState(obj)
@@ -65,36 +73,34 @@ classdef disturbance_input_2 < DrakeSystem
 %         %w_next = w;
 %     end
 %             
-    function y = output(obj,t, w,~)
+    function y = output(obj,t, ~,~)
       % full state feedback is allowed here
       u_base = obj.u0(1);
       wth_base = 0;
-%       if (t < 0.5) || (t > 0.6)
-%           wtg_base = 0;
-%       else
-%           %wth_base = -5e-3;
-%           %wth_base = -0.0127;
-%           wtg_base = 0.00635;
-%       end
-
+      
       x = obj.v*t;
       ws = square(2*pi.*x/obj.track_period, obj.track_duty_cycle);
 %     ws = 1;
       wtg_base = -(ws/2 - 0.5)*obj.slot_length;
+      %wtg_base = 0;
+      
+      %wth_base = 0;
+      
+      num_calls = floor(x/obj.track_period);
+      wth_base = obj.step_rand_noise(obj.track_drift_incremental, num_calls);
       
       
-%       if wtg_base ~= 0          
-%         new_rand = 2*(rand-0.5);
-%         track_change = obj.track_drift * new_rand;
-%         wth_base = track_change;
-%       end
-      %wth_base = -5e-3;
-      wth_base = 0;
-      %wth_base = w;
-
       y = [u_base; wth_base; wtg_base];
 
     end  
+    
+    function s = step_rand_noise(obj, drift, num_calls)
+        %integrated uniform random noise process
+        %truly horrible rng hacking
+        rng(obj.seed);
+        steps = (rand(1, num_calls)-0.5) * 2 * drift;
+        s = sum(steps);
+    end
     
   end
   

@@ -6,16 +6,19 @@ classdef ball_beam_visualizer < Visualizer
     W = 0.01; % beam width
     r_ball = 0.02; %ball radius
     r_pin  = 0.004; %pin radius
-    setpoint;
+    setpoint;   
+    uses_observer = 0;
   end
 
   methods
     function obj = ball_beam_visualizer(plant)
-      typecheck(plant,'ball_beam_plant');
-      obj = obj@Visualizer(plant.getOutputFrame);
+      typecheck(plant,'ball_beam_plant') || typecheck(plant,'ball_beam_plant_observer');
+      %obj = obj@Visualizer(plant.getOutputFrame);
+      obj = obj@Visualizer(plant.getStateFrame);
       obj.L = plant.L;
       obj.r_ball = plant.r_ball;
       obj.setpoint = plant.x0(1);
+      obj.uses_observer = plant.uses_observer;
     end
     
     function draw(obj,t,x)
@@ -27,16 +30,22 @@ classdef ball_beam_visualizer < Visualizer
         set(hFig,'DoubleBuffer', 'on');
         
         beam = [obj.L*[1 -1 -1 1]; obj.W*[1 1 -1 -1]];
-        t = linspace(0, 2*pi, 50);
-        circ = [cos(t); sin(t)];
+        th = linspace(0, 2*pi, 50);
+        circ = [cos(th); sin(th)];
       end
             
-      sfigure(hFig); cla; hold on; view(0,90);
+      sfigure(hFig); cla; hold on; %view(0,90);
       
       %r = [cos(x(2)), -sin(x(2)); sin(x(2)), cos(x(2))];
+      
+      %if obj.uses_observer
+      %    r = [cos(x(2)), -sin(x(2)); sin(x(2)), cos(x(2))];      
+      %else
+      %    r = [cos(x(3)), -sin(x(3)); sin(x(3)), cos(x(3))];
+      %end
 
       r = [cos(x(3)), -sin(x(3)); sin(x(3)), cos(x(3))];
-
+      
       %plot the beam
       p = r*beam;
       patch(p(1, :), p(2, :), 'k', 'FaceColor',[0 0 0]);
@@ -62,6 +71,7 @@ classdef ball_beam_visualizer < Visualizer
       ylabel('height (m)')
       
       drawnow;
+      
     end    
   end
   

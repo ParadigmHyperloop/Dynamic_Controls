@@ -2,10 +2,11 @@
 %\begin{equation}\pi(1)=\frac{length}{height }\end{equation}
 \begin{align}
 %\pi(1) &= \frac{length}{height }
-M \ddot{z} &= (P_b - P_a)A - Mg \\
-\dot{P}_b &= \frac{\gamma R T}{A z} (\dot{m}_{in} - \dot{m}_{escape} - \frac{P_b A \dot{z}}{R T})\\
-\rho \frac{\partial P}{\partial x} &= \frac{\beta}{L^2}(\frac{\dot{m}_{escape}}{z})^2 + \frac{\mu}{\kappa L}(\frac{\dot{m}_{escape}}{z}) \\
-\frac{\partial P}{\partial x} &= \frac{P_b - P_a}{\ell}
+M \ddot{z} &= (P_{bag} - P_{atmo})A - Mg \\
+\dot{P}_{bag} &= \frac{\gamma R T}{A z} (\dot{m}_{in} - \dot{m}_{escape} - \frac{P_{bag} A \dot{z}}{R T})\\[20pt]
+\rho_{atmo} \frac{\partial P}{\partial x} &= \beta(\frac{\dot{m}_{escape}}{A_e})^2 + \mu(\frac{\dot{m}_{escape}}{A_e}) \\
+A_{e} &= Per * z \\
+\frac{\partial P}{\partial x} &= \frac{P_{bag} - P_{atmo}}{\ell}
 \end{align}
 
 \end{document}

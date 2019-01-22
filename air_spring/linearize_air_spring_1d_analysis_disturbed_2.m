@@ -9,6 +9,9 @@ sys = ss(A, B, C, D, 'StateName', {'Height', 'Velocity', 'Bag Pressure', 'Soleno
                      'OutputName', {'Height', 'Velocity','Bag Pressure', 'Solenoid Massflow'},...
                      'InputName', {'MassFlowIn', 'W-TrackHeight', 'W-TrackGap'});
 
+T5 = diag([1 1 1e-5 1]);
+sys5 = ss2ss(sys, T5);
+                 
 u_sys = sys(:, 1);      %mass flow in   subsystem
 wth_sys = sys(:, 2);    %w track height subsystem
 wtg_sys = sys(:, 3);    %w track gap    subsystem

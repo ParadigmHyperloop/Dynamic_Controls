@@ -88,6 +88,9 @@ classdef AirSpringPlant1d < DrakeSystem
                                   3, ... %number of output
                                   false, ... %because the output does not depend on u
                                   true); %because the dynamics and output do not depend on t      
+      obj = setInputFrame(obj, CoordinateFrame('AirSpringInput', 1, 'u', {'min'}));
+      obj = setStateFrame(obj, CoordinateFrame('AirSpringState', 3, 'x', {'z', 'zdot', 'P'}));
+      
       obj = obj.setOutputFrame(obj.getStateFrame);  % allow full-state feedback
     
       %deal with input limits
@@ -229,7 +232,7 @@ classdef AirSpringPlant1d < DrakeSystem
     function [c,V] = hoverLQR(obj, ROA)      
       x0 = Point(obj.getStateFrame, obj.x0);
       u0 = Point(obj.getInputFrame, obj.u0);
-      Q = diag([10 1 1e-2]);
+      Q = diag([10 1 1e-2 0.1]);
       R = diag(1)*obj.delta;
 
       if ROA
