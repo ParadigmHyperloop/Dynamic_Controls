@@ -1,4 +1,4 @@
-active_control = 1;
+active_control = 0;
 
 %p = AirSpringPlant1d;
 p = AirSpringPlant1d_slow;
@@ -23,15 +23,13 @@ else
     sys = p;
 end
 
-
-%sys = feedback(p, c);
 tic;
 %xtraj = simulate(sys, time_span);
 xtraj = simulate(p, time_span);
 toc;
 %output plots
 figure(35)
-
+clf
 Nt = 201;
 
 t = linspace(time_span(1), time_span(2), Nt);  
@@ -45,7 +43,7 @@ plot(t, 100*xtraj_num(1, :))
 plot(time_span, [0, 0] + p.x0(1)*100, '--k')
 hold off
 title('$$z$$', 'interpreter', 'latex')
-legend('z')
+%legend('z')
 ylabel('heave (cm)')
 
 subplot(5, 1, 2)
@@ -55,19 +53,19 @@ plot(t, 100*xtraj_num(2, :))
 plot(time_span, [0, 0], '--k')
 hold off
 title('$$\dot{z}$$', 'interpreter', 'latex')
-legend('dz')
+%legend('dz')
 ylabel('vertical speed (cm/s)')
 
 subplot(5, 1, 3)
 hold on
-plot(t, xtraj_num(3, :)/1000)  
-plot(time_span, [0, 0] + p.x0(3)/1000, '--k')
+plot(t, xtraj_num(3, :)/p.pressure_scale/1000)  
+plot(time_span, [0, 0] + p.x0(3)/p.pressure_scale/1000, '--k')
 hold off
 title('$$p$$', 'interpreter', 'latex')  
 xlabel('time (s)')
 ylabel('bagpressure (kPa)')
 %ylabel('force (N)')
-legend('p')
+%legend('p')
 
 subplot(5, 1, 4)
 hold on
@@ -78,7 +76,7 @@ title('$$\dot{m}_{in}^{actual}$$', 'interpreter', 'latex')
 xlabel('time (s)')
 ylabel('mass flow (kg/s)')
 %ylabel('force (N)')
-legend('p')
+%legend('p')
 
 subplot(5, 1, 5)
 utraj_num = c.D*(xtraj_num-p.x0);
@@ -89,7 +87,7 @@ hold off
 title('$$\dot{m}_{in}^{desired}$$', 'interpreter', 'latex')   
 xlabel('time (s)')
 ylabel('mass flow (kg/s)')
-legend('u')
+%legend('u')
 
 
 % v.playback(xtraj);

@@ -4,8 +4,8 @@ classdef AirSpringPlant1d_slow < DrakeSystem
 %purely heave motion, no horizontal travel
     
   % state (world coordinates):  
-  %  x(1) - z position [cm]
-  %  x(2) - z speed    [cm/s]
+  %  x(1) - z position [m]
+  %  x(2) - z speed    [m/s]
   %  x(3) - bag pressure   [N/m^2 = Pa]
   %  x(4) - current mass flow rate
   % input:
@@ -14,7 +14,9 @@ classdef AirSpringPlant1d_slow < DrakeSystem
   properties  
     %Pod 3
     N = 4;
-
+    pressure_scale = 1e-5;
+    %pressure_scale = 1;
+    
     M_total = 909; %kg
     M;
         
@@ -63,8 +65,8 @@ classdef AirSpringPlant1d_slow < DrakeSystem
     g = 9.81;   % gravity [N]
     b = 0;      %friction [N/(m/s)]
     
-    %pa = 101325.0; % atmospheric pressure [N/m^2=Pa]
-    pa = 5 * 133.322; %tube pressure torr->pascal [N/m^2=Pa]
+    pa = 101325.0; % atmospheric pressure [N/m^2=Pa]
+    %pa = 5 * 133.322; %tube pressure torr->pascal [N/m^2=Pa]
     
     rhoa; %atmospheric density [kg/m^3]
     gamma = 1.40;   %specific heat ratio at stp
@@ -113,7 +115,9 @@ classdef AirSpringPlant1d_slow < DrakeSystem
       obj.Per = obj.Per_skate * obj.N;
       
       obj.h = obj.h_bag + obj.h_skate;
-           
+        
+      obj.pa = obj.pa * obj.pressure_scale;
+      
       %now find equilibrium point
       [obj.x0, obj.u0] = obj.find_equilibrium_point();
       obj.ride_height = obj.x0(1);
@@ -128,7 +132,7 @@ classdef AirSpringPlant1d_slow < DrakeSystem
         %state equilibrium
         
         %find pressure
-        p0 = obj.pa + obj.M*obj.g/obj.A;        
+        p0 = obj.pa + obj.pressure_scale * obj.M*obj.g/obj.A;        
         
         %ride height from darcy flow
         
@@ -136,7 +140,7 @@ classdef AirSpringPlant1d_slow < DrakeSystem
         if obj.select_ride_height
             %find flow from ride height
             z0 = obj.ride_height;
-            min0 = obj.permeability*obj.Per * z0/(obj.mu * obj.bag_thickness) * (p0 - obj.pa);      
+            min0 = obj.permeability*obj.Per * z0/(obj.mu * obj.bag_thickness) * (p0 - obj.pa)/obj.pressure_scale;      
             obj.input_flow = min0;
         else
             %find ride height from flow
@@ -146,7 +150,7 @@ classdef AirSpringPlant1d_slow < DrakeSystem
             %quadratic form of forchheimer equation
             a = obj.forchheimer_beta/obj.Per^2;
             b = obj.mu/(obj.permeability * obj.Per);            
-            c = -(p0-obj.pa)/obj.bag_thickness * obj.rhoa;
+            c = -((p0-obj.pa)/obj.pressure_scale)/obj.bag_thickness * obj.rhoa;
             
             if obj.darcy_flow
                 min_over_z = -c/b;
@@ -188,7 +192,7 @@ classdef AirSpringPlant1d_slow < DrakeSystem
        
        a = obj.forchheimer_beta/obj.Per^2;
        b = obj.mu/(obj.permeability * obj.Per);            
-       c = -(x(3)-obj.pa)/obj.bag_thickness * obj.rhoa;
+       c = -(x(3)-obj.pa)/obj.bag_thickness * obj.rhoa / obj.pressure_scale;
 
        if obj.darcy_flow
            min_over_z = -c/b;
@@ -200,12 +204,12 @@ classdef AirSpringPlant1d_slow < DrakeSystem
        
        %pressure change in the bag
        %p_outside = (obj.gamma*obj.R*obj.T)/(obj.A*(x(1) + obj.h_skate));
-       p_outside = (obj.gamma*obj.R*obj.T)/(obj.A*x(1));
-       p_inside  = x(4) - mescape - x(3)*obj.A*x(2)/(obj.R*obj.T);
+       p_outside = (obj.gamma*obj.R*obj.T)/(obj.A*x(1)) * obj.pressure_scale;
+       p_inside  = x(4) - mescape - x(3)*obj.A*x(2)/(obj.R*obj.T) / obj.pressure_scale;
        
        %pressure gradient force
        %pb-pa * area
-       lift_force = (x(3) - obj.pa) * obj.A;
+       lift_force = (x(3) - obj.pa) * obj.A / obj.pressure_scale;
        
        %dynamical evolution of system
        xdot = [x(2);
@@ -237,8 +241,8 @@ classdef AirSpringPlant1d_slow < DrakeSystem
     function [c,V] = hoverLQR(obj, ROA)      
       x0 = Point(obj.getStateFrame, obj.x0);
       u0 = Point(obj.getInputFrame, obj.u0);
-      Q = 1e-3*diag([1 1 1e-4 1e-3]);
-      R = diag(1)*1e10;
+      Q = 1e-3*diag([1 1 1e-4/obj.pressure_scale 1e-2]);
+      R = 1e3;
 
       if ROA
         [c,V0] = tilqr(obj,x0,u0,Q,R);
