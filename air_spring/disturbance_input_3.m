@@ -53,29 +53,11 @@ classdef disturbance_input_3 < DrakeSystem
       obj.sample_time = obj.track_period / v;
       obj.seed = seed;
     end
-%     
-%     function w_init = getInitialState(obj)
-%         w_init = 0;
-%     end
-% 
-%     
-%     function ts = getSampleTime(obj)
-%         %ts = [obj.sample_time; 0];
-%         ts = [1; 0];
-%     end
-%     
-%     function w_next = update(obj, t, w, ~)
-%         new_rand = 2*(rand-0.5);
-%         track_change = obj.track_drift * new_rand;
-%                 
-%         w_next = w + track_change;
-%         %w_next = w;
-%     end
-%             
+             
     function y = output(obj,t, ~,~)
       % full state feedback is allowed here
       %u_base = obj.u0(1);
-      wth_base = 0;
+      %wth_base = 0;
       
       x = obj.v*t;
       ws = square(2*pi.*x/obj.track_period, obj.track_duty_cycle);
@@ -89,7 +71,8 @@ classdef disturbance_input_3 < DrakeSystem
       wth_base = obj.step_rand_noise(obj.track_drift_incremental, num_calls);
       
       
-      y = [wth_base; wtg_base];
+      %y = [wth_base; wtg_base];
+      y = [0; 0];
 
     end  
     

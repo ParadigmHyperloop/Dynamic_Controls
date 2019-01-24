@@ -16,6 +16,8 @@ classdef AirSpringPlant1d_disturbed_2 < DrakeSystem
   properties  
     %Pod 3
     N = 4;
+    pressure_scale = 1e-5;
+    %pressure_scale = 1;
 
     M_total = 909; %kg
     M;
@@ -23,6 +25,7 @@ classdef AirSpringPlant1d_disturbed_2 < DrakeSystem
     %length/width/area
     L = 0.9144; % length of skate [m] 36"
     W = 0.3048; % width  of skate [m] 12"
+    
     %W = 0.127; % width  of skate [m]
     %W = 0.9144;
     
@@ -65,8 +68,8 @@ classdef AirSpringPlant1d_disturbed_2 < DrakeSystem
     g = 9.81;   % gravity [N]
     b = 0;      %friction [N/(m/s)]
     
-    pa = 101325.0; % atmospheric pressure [N/m^2=Pa]
-    %pa = 5 * 133.322; %tube pressure torr->pascal [N/m^2=Pa]
+    %pa = 101325.0; % atmospheric pressure [N/m^2=Pa]
+    pa = 5 * 133.322; %tube pressure torr->pascal [N/m^2=Pa]
     
     rhoa; %atmospheric density [kg/m^3]
     gamma = 1.40;   %specific heat ratio at stp
@@ -112,10 +115,12 @@ classdef AirSpringPlant1d_disturbed_2 < DrakeSystem
       
       obj.h = obj.h_bag + obj.h_skate;
            
+      obj.pa = obj.pa * obj.pressure_scale;
+      
       %now find equilibrium point
       [obj.x0, obj.u0] = obj.find_equilibrium_point();
       obj.ride_height = obj.x0(1);
-      obj.input_flow = obj.u0;
+      obj.input_flow = obj.u0(1);
       
       obj.u0_scfm = obj.u0 * 1800.24;
       
@@ -126,15 +131,16 @@ classdef AirSpringPlant1d_disturbed_2 < DrakeSystem
         %state equilibrium
         
         %find pressure
-        p0 = obj.pa + obj.M*obj.g/obj.A;        
-        
+        p0 = obj.pa + obj.pressure_scale * obj.M*obj.g/obj.A;        
+        %p = p0 / obj.pressure_scale;
+        dp = (p0 - obj.pa) / obj.pressure_scale;
         %ride height from darcy flow
         
         %find ride height and mass flow in
         if obj.select_ride_height
             %find flow from ride height
             z0 = obj.ride_height;
-            min0 = obj.permeability*obj.Per * z0/(obj.mu * obj.bag_thickness) * (p0 - obj.pa);      
+            min0 = obj.permeability*obj.Per * z0/(obj.mu * obj.bag_thickness) * (p0 - obj.pa)/obj.pressure_scale;      
             obj.input_flow = min0;
         else
             %find ride height from flow
@@ -145,21 +151,25 @@ classdef AirSpringPlant1d_disturbed_2 < DrakeSystem
             %a = obj.forchheimer_beta/obj.Per^2;
             %b = obj.mu/(obj.permeability * obj.Per);
 
-            a = obj.forchheimer_beta;
-            b = obj.mu/obj.permeability;            
-            c = -(p0-obj.pa)/obj.bag_thickness * obj.rhoa;
+            a = obj.forchheimer_beta/obj.Per^2;
+            b = obj.mu/(obj.permeability * obj.Per);            
+            c = -dp/obj.bag_thickness * obj.rhoa;
+
+            %        a = obj.forchheimer_beta/obj.Per^2;
+            %        b = obj.mu/(obj.permeability * obj.Per);            
+            %        %c = -dp/obj.bag_thickness * obj.rhoa;
+            %        c = dp/obj.bag_thickness * obj.rhoa;
 
             if obj.darcy_flow
-                min_over_Ae = -c/b;
+               min_over_z = -c/b;
             else
-                min_over_Ae = (-b + sqrt(b^2 - 4*a*c))/(2*a);
+               min_over_z = (-b + sqrt(b^2 - 4*a*c))/(2*a);
             end
-
-            %effective area
-            Ae0 = min0 / min_over_Ae;
-            z0 = Ae0 / obj.Per;
-
+            
+            z0 = min0 / min_over_z;            
+            
             obj.ride_height = z0;
+            
         end
 %         
 %         %pb0 = p0 + min0 * obj.mu * obj.h_bag/(obj.permeability * obj.A^2 * obj.rhoa);
@@ -179,7 +189,10 @@ classdef AirSpringPlant1d_disturbed_2 < DrakeSystem
       else
           u_thresh = 0;
       end 
-       
+      
+      p = x(3) / obj.pressure_scale;
+      dp = (x(3) - obj.pa) / obj.pressure_scale;      
+      
       %incoming mass flow rate
        
       %active control
@@ -193,8 +206,13 @@ classdef AirSpringPlant1d_disturbed_2 < DrakeSystem
       %w_track_gap = 0
        
      eff_height = x(1) - w_track_height;       
-     min = x(4);
-      
+     %height spikes, when there's not enough clearance
+     if eff_height < 0
+         spike = 1e6;
+     else
+         spike = x(2);
+     end
+     
      %darcy flow (from bag to outside)
      %the effective area is the area in which air can escape the bag
      %when the skate is hovering over the gap in the track, the effective
@@ -204,11 +222,12 @@ classdef AirSpringPlant1d_disturbed_2 < DrakeSystem
      Ae = Ae0 + (obj.W*obj.N)*w_track_gap;
      
      %pressure gradient across the bag thickness
-     dpdx = (x(3)-obj.pa)/obj.bag_thickness;
+     dpdx = dp/obj.bag_thickness;
 
      a = obj.forchheimer_beta;
      b = obj.mu/obj.permeability;            
      c = - dpdx * obj.rhoa;
+     
      if obj.darcy_flow
          min_over_Ae = -c/b;
      else
@@ -219,19 +238,17 @@ classdef AirSpringPlant1d_disturbed_2 < DrakeSystem
      mescape = Ae * min_over_Ae;
        
      %pressure change in the bag
-     %p_outside = (obj.gamma*obj.R*obj.T)/(obj.A*(eff_height + obj.h_skate));
-     p_outside = (obj.gamma*obj.R*obj.T)/(obj.A*eff_height);
-     p_inside  = min - mescape - x(3)*obj.A*x(2)/(obj.R*obj.T);
+     p_outside = (obj.gamma*obj.R*obj.T)/(obj.A*eff_height)* obj.pressure_scale;
+     p_inside  = x(4) - mescape - p*obj.A*x(2)/(obj.R*obj.T);
        
      %pressure gradient force
-     %pb-pa * area
-     lift_force = (x(3) - obj.pa) * obj.A;
+     lift_force = dp * obj.A;
      
      %dynamical evolution of system
-     xdot = [x(2);                            %velocity
+     xdot = [spike;                           %velocity
              lift_force/obj.M - obj.g;        %acceleration
              p_outside * p_inside;            %pressure change
-             obj.solenoid_frequency*(u_thresh - min)];%solenoid response
+             obj.solenoid_frequency*(u_thresh - x(4))];%solenoid response
            
     end
     
@@ -247,24 +264,25 @@ classdef AirSpringPlant1d_disturbed_2 < DrakeSystem
       %z_init = 1e-10;
       p_init = obj.x0(3);
       
-      %p_init = obj.pa;
+      %p_init = obj.pa;      
+      flow_init = obj.u0(1);
       
-      min_init = obj.x0(4);
-      %min_init = 0;
-      
-      
-      x_init = [z_init;
-                0;        %initial z speed
-                p_init    %initial bottom pressure
-                min_init];%nominal mass flow 
+      x_init = [z_init;  %initial ride height
+                0;       %initial z speed
+                p_init;  %initial bottom pressure
+                flow_init];   %input flow
     end
     
     function [c,V] = hoverLQR(obj, ROA)      
       x0 = Point(obj.getStateFrame, obj.x0);
       u0 = Point(obj.getInputFrame, obj.u0);
-      Q = diag([1 1 1e-2 1e-2]);
-      R = diag(1)*obj.delta;
+      %Q = diag([5 3 1e-4/obj.pressure_scale 5]);
+      Q = diag([10 10 10 100]);
+      R = 1e3;
 
+      
+      [A,B,C,D,xdot0] = obj.linearize(0,obj.x0,obj.u0);
+      
       if ROA
         [c,V0] = tilqr(obj,x0,u0,Q,R);
         sys = feedback(obj,c);
@@ -274,8 +292,17 @@ classdef AirSpringPlant1d_disturbed_2 < DrakeSystem
         options.degL1=2;
         V=regionOfAttraction(pp,V0,options);
       else
-        [c, V0] = tilqr(obj,x0,u0,Q,R);
-        V = V0;
+        D = D(:, 1);
+        Bw = B(:, 2:3);
+        B = B(:, 1);
+        
+        [K,S] = lqr(full(A),full(B),Q,R);
+        
+        V.S = S;
+        c.D = K;
+        
+        %[c, V0] = tilqr(obj,x0,u0,Q,R);
+        %V = V0;
       end
     end
     

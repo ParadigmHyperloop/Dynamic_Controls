@@ -132,7 +132,11 @@ classdef AirSpringPlant1d_slow < DrakeSystem
         %state equilibrium
         
         %find pressure
+       
         p0 = obj.pa + obj.pressure_scale * obj.M*obj.g/obj.A;        
+        %p = p0 / obj.pressure_scale;
+        dp = (p0 - obj.pa) / obj.pressure_scale;
+        
         
         %ride height from darcy flow
         
@@ -140,7 +144,7 @@ classdef AirSpringPlant1d_slow < DrakeSystem
         if obj.select_ride_height
             %find flow from ride height
             z0 = obj.ride_height;
-            min0 = obj.permeability*obj.Per * z0/(obj.mu * obj.bag_thickness) * (p0 - obj.pa)/obj.pressure_scale;      
+            min0 = obj.permeability*obj.Per * z0/(obj.mu * obj.bag_thickness) * -dp;      
             obj.input_flow = min0;
         else
             %find ride height from flow
@@ -150,7 +154,7 @@ classdef AirSpringPlant1d_slow < DrakeSystem
             %quadratic form of forchheimer equation
             a = obj.forchheimer_beta/obj.Per^2;
             b = obj.mu/(obj.permeability * obj.Per);            
-            c = -((p0-obj.pa)/obj.pressure_scale)/obj.bag_thickness * obj.rhoa;
+            c = -dp/obj.bag_thickness * obj.rhoa;
             
             if obj.darcy_flow
                 min_over_z = -c/b;
@@ -180,19 +184,22 @@ classdef AirSpringPlant1d_slow < DrakeSystem
            u_thresh = u;
        else
            u_thresh = 0;
-       end 
-       
-       %incoming mass flow rate
-       min = u_thresh;
-       %min = obj.u0;
+       end       
        
        
        %darcy flow (from bag to outside
        %Ae = obj.Per * x(1); %exit area of bag, since the bag does not let out air on bottom
+       p = x(3) / obj.pressure_scale;
+       dp = (x(3) - obj.pa) / obj.pressure_scale;
        
        a = obj.forchheimer_beta/obj.Per^2;
        b = obj.mu/(obj.permeability * obj.Per);            
-       c = -(x(3)-obj.pa)/obj.bag_thickness * obj.rhoa / obj.pressure_scale;
+       c = -dp/obj.bag_thickness * obj.rhoa;
+       
+%        a = obj.forchheimer_beta/obj.Per^2;
+%        b = obj.mu/(obj.permeability * obj.Per);            
+%        %c = -dp/obj.bag_thickness * obj.rhoa;
+%        c = dp/obj.bag_thickness * obj.rhoa;
 
        if obj.darcy_flow
            min_over_z = -c/b;
@@ -205,11 +212,11 @@ classdef AirSpringPlant1d_slow < DrakeSystem
        %pressure change in the bag
        %p_outside = (obj.gamma*obj.R*obj.T)/(obj.A*(x(1) + obj.h_skate));
        p_outside = (obj.gamma*obj.R*obj.T)/(obj.A*x(1)) * obj.pressure_scale;
-       p_inside  = x(4) - mescape - x(3)*obj.A*x(2)/(obj.R*obj.T) / obj.pressure_scale;
+       p_inside  = x(4) - mescape - p*obj.A*x(2)/(obj.R*obj.T);
        
        %pressure gradient force
        %pb-pa * area
-       lift_force = (x(3) - obj.pa) * obj.A / obj.pressure_scale;
+       lift_force = dp * obj.A;
        
        %dynamical evolution of system
        xdot = [x(2);
@@ -219,7 +226,7 @@ classdef AirSpringPlant1d_slow < DrakeSystem
            
     end
     
-    function y = output(obj,~,x,u)
+    function y = output(obj,t,x,u)
       % full state feedback is allowed here
       y = x;
     end
@@ -232,16 +239,18 @@ classdef AirSpringPlant1d_slow < DrakeSystem
       %p_init = obj.x0(3);
       
       p_init = obj.pa;
+      flow_init = obj.u0;
       
-      x_init = [z_init;
+      x_init = [z_init;  %initial ride height
                 0;       %initial z speed
-                p_init]; %initial bottom pressure
+                p_init;  %initial bottom pressure
+                flow_init];   %input flow
     end
     
     function [c,V] = hoverLQR(obj, ROA)      
       x0 = Point(obj.getStateFrame, obj.x0);
       u0 = Point(obj.getInputFrame, obj.u0);
-      Q = 1e-3*diag([1 1 1e-4/obj.pressure_scale 1e-2]);
+      Q = diag([5 3 1e-4/obj.pressure_scale 5]);
       R = 1e3;
 
       if ROA
