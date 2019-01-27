@@ -71,8 +71,8 @@ classdef disturbance_input_3 < DrakeSystem
       wth_base = obj.step_rand_noise(obj.track_drift_incremental, num_calls);
       
       
-      %y = [wth_base; wtg_base];
-      y = [0; 0];
+      y = [wth_base; wtg_base];
+      %y = [0; 0];
 
     end  
     

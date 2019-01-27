@@ -68,8 +68,8 @@ classdef AirSpringPlant1d_disturbed_2 < DrakeSystem
     g = 9.81;   % gravity [N]
     b = 0;      %friction [N/(m/s)]
     
-    %pa = 101325.0; % atmospheric pressure [N/m^2=Pa]
-    pa = 5 * 133.322; %tube pressure torr->pascal [N/m^2=Pa]
+    pa = 101325.0; % atmospheric pressure [N/m^2=Pa]
+    %pa = 5 * 133.322; %tube pressure torr->pascal [N/m^2=Pa]
     
     rhoa; %atmospheric density [kg/m^3]
     gamma = 1.40;   %specific heat ratio at stp

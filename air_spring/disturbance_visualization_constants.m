@@ -9,10 +9,10 @@ track_drift_incremental = 0.001016; %0.04"
 
 %slot_length = 1;
 %track_length = 4;
-%v = 26.8;               %60 mph
+v = 26.8;               %60 mph
 %v = 80;
 %v = 60
-v = 178;
+%v = 178;
 
 total_length = slot_length + track_length;
 
