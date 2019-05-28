@@ -55,18 +55,19 @@ classdef FlowEnginePlant < DrakeSystem
     h;
     %ride_height = 0.000635; %steady state ride height [m] (0.25")
     %ride_height;
+    ride_height = 0.001;
     %ride_height = 0.001;
     %ride_height = 0.072;
     %%ride_height = 1.2e-4;
     %ride_height = 1.52e-4; %small width
     %ride_height  = 2.01e-4; %large width 
-    ride_height = 6.38e-4;
+    %ride_height = 6.38e-4;
     %ride_height = 5e-3;
     
     %mass flow in if desired
-    input_flow = 0.5; %[kg/s]
+    %input_flow = 0.5; %[kg/s]
     
-    %input_flow = 0.16; %[kg/s]
+    input_flow = 0.16; %[kg/s]
     %input_flow = 0.08; %[kg/s]
     
     select_ride_height = 1;
